@@ -1,0 +1,21 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage":              "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME":         "dotnet-isolated",
+
+    "VaxTraceStorage":                  "UseDevelopmentStorage=true",
+    "VaccinationQueueName":             "vaccination-queue",
+    "VaccinationBlobContainer":         "vaccination-raw-archive",
+    "ProcessedBlobContainer":           "vaccination-processed",
+
+    "SqlConnectionString":
+      "Server=localhost:1434;Database=VaxTraceDB;User Id=sa;Password=VaxTrace_Dev123!;TrustServerCertificate=True;",
+
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": ""
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS":          "*"
+  }
+}

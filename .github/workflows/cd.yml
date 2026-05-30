@@ -1,0 +1,75 @@
+name: CD — Deploy to Azure (when credits available)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:   # Manual trigger
+
+jobs:
+  deploy:
+    name: Deploy Azure Functions + SQL
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build Functions
+        run: |
+          dotnet publish backend/functions/VaxTrace.Functions.csproj \
+            --configuration Release \
+            --output ./functions-publish
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Azure Infrastructure (Bicep)
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          template:          infrastructure/main.bicep
+          parameters:        sqlAdminPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
+
+      - name: Apply SQL Schema to Azure SQL
+        env:
+          SQLCMDPASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list \
+            | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get update -q
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+
+          SQL_SERVER="${{ secrets.SQL_SERVER_NAME }}.database.windows.net"
+
+          for f in backend/sql/01_schema.sql backend/sql/02_stored_procedures.sql; do
+            /opt/mssql-tools18/bin/sqlcmd \
+              -S "$SQL_SERVER" -U "${{ secrets.SQL_ADMIN_USER }}" \
+              -d VaxTraceDB -i "$f" -b
+            echo "✅ Applied: $f"
+          done
+
+      - name: Deploy to Azure Functions
+        uses: azure/functions-action@v1
+        with:
+          app-name: ${{ secrets.AZURE_FUNCTIONAPP_NAME }}
+          package:  './functions-publish'
+
+      - name: Smoke test — health endpoint
+        run: |
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://${{ secrets.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/health")
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Health check passed — HTTP 200"
+          else
+            echo "::error::Health check failed — HTTP $STATUS"
+            exit 1
+          fi

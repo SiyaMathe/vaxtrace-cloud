@@ -1,0 +1,42 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🔵 Debug Azure Functions (local)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "func: host start",
+      "program": "${env:USERPROFILE}/.azure-functions-core-tools/Functions/ExtensionBundles/Microsoft.Azure.Functions.ExtensionBundle/4.*/bin/func.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/backend/functions",
+      "stopAtEntry": false,
+      "launchBrowser": {
+        "enabled": true,
+        "args": "${auto-detect-url}",
+        "windows": { "command": "cmd.exe", "args": "/C start ${auto-detect-url}/api/health" },
+        "osx":     { "command": "open" },
+        "linux":   { "command": "xdg-open" }
+      },
+      "env": {
+        "AZURE_FUNCTIONS_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "🔴 Run Unit Tests",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/VaxTrace.Tests.csproj",
+        "--verbosity", "normal"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    }
+  ]
+}

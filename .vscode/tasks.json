@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "func",
+      "label": "func: host start",
+      "command": "host start",
+      "problemMatcher": "$func-dotnet-watch",
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}/backend/functions"
+      }
+    },
+    {
+      "label": "build-functions",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/backend/functions/VaxTrace.Functions.csproj",
+        "--configuration", "Debug"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "docker-up",
+      "type": "shell",
+      "command": "docker-compose up -d",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "docker-down",
+      "type": "shell",
+      "command": "docker-compose down",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "run-tests",
+      "type": "shell",
+      "command": "dotnet test tests/VaxTrace.Tests.csproj --verbosity normal",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "setup-local",
+      "type": "shell",
+      "command": "bash scripts/setup-local.sh",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "new" }
+    }
+  ]
+}

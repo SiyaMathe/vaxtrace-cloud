@@ -1,0 +1,126 @@
+name: CI — VaxTrace Cloud
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  # ── Build and test Functions ──────────────────────────────────────────────
+  build-and-test:
+    name: Build & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore backend/functions/VaxTrace.Functions.csproj
+
+      - name: Build
+        run: |
+          dotnet build backend/functions/VaxTrace.Functions.csproj \
+            --configuration Release --no-restore
+
+      - name: Run unit tests
+        run: |
+          dotnet test tests/VaxTrace.Tests.csproj \
+            --verbosity normal \
+            --logger "trx;LogFileName=test-results.trx" \
+            --collect:"XPlat Code Coverage"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: "**/*.trx"
+
+  # ── Integration tests against Azurite + SQL Server ───────────────────────
+  integration-tests:
+    name: Integration Tests (Azurite + SQL Server)
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          SA_PASSWORD:  "VaxTrace_Dev123!"
+          ACCEPT_EULA:  "Y"
+          MSSQL_PID:    "Developer"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P VaxTrace_Dev123! -Q 'SELECT 1' -b"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+          --health-start-period 30s
+
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite:latest
+        ports:
+          - 10000:10000
+          - 10001:10001
+          - 10002:10002
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install sqlcmd
+        run: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list \
+            | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get update -q
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+
+      - name: Apply SQL schema
+        env:
+          SQLCMDPASSWORD: "VaxTrace_Dev123!"
+        run: |
+          /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -C \
+            -i backend/sql/01_schema.sql -b
+          /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -C \
+            -d VaxTraceDB -i backend/sql/02_stored_procedures.sql -b
+          /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -C \
+            -d VaxTraceDB -i backend/sql/03_seed_data.sql -b
+
+      - name: Run all tests (including integration)
+        env:
+          SqlConnectionString: "Server=localhost,1433;Database=VaxTraceDB;User Id=sa;Password=VaxTrace_Dev123!;TrustServerCertificate=True;"
+          VaxTraceStorage:     "UseDevelopmentStorage=true"
+        run: |
+          dotnet test tests/VaxTrace.Tests.csproj \
+            --verbosity normal
+
+  # ── Security scan ────────────────────────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Check for vulnerable packages
+        run: |
+          dotnet list backend/functions/VaxTrace.Functions.csproj \
+            package --vulnerable --include-transitive 2>&1 | tee vuln.txt
+          if grep -q "has the following vulnerable packages" vuln.txt; then
+            echo "::error::Vulnerable NuGet packages found"
+            exit 1
+          fi
+          echo "✅ No vulnerable packages found"

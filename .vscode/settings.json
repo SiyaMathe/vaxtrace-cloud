@@ -1,0 +1,24 @@
+{
+  "mssql.connections": [
+    {
+      "server": "localhost,1433",
+      "database": "VaxTraceDB",
+      "authenticationType": "SqlLogin",
+      "user": "sa",
+      "password": "",
+      "savePassword": false,
+      "profileName": "VaxTrace Local (Docker)",
+      "encrypt": false,
+      "trustServerCertificate": true,
+      "groupId": "ROOT",
+      "id": "be053460-9dba-40ee-b37e-b0d895baa635"
+    }
+  ],
+  "mssql.intelliSense.enableIntelliSense": true,
+  "mssql.format.keywordCasing":            "uppercase",
+  "mssql.format.datatypeCasing":           "uppercase",
+  "[sql]": {
+    "editor.formatOnSave":    true,
+    "editor.defaultFormatter": "ms-mssql.mssql"
+  }
+}

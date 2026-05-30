@@ -1,0 +1,106 @@
+version: '3.9'
+
+# =============================================================================
+# VaxTrace Cloud — Local Development Stack
+# Emulates the full Azure environment without any cloud credits:
+#   • Azurite  → Azure Storage (Queues + Blob + Table)
+#   • SQL Server 2022 → Azure SQL Database
+# =============================================================================
+
+services:
+
+  # ── Azurite: official Microsoft Azure Storage emulator ─────────────────────
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: vaxtrace-azurite
+    command: >
+      azurite
+      --blobHost  0.0.0.0
+      --queueHost 0.0.0.0
+      --tableHost 0.0.0.0
+      --loose
+      --skipApiVersionCheck
+    ports:
+      - "10000:10000"   # Blob Storage
+      - "10001:10001"   # Queue Storage
+      - "10002:10002"   # Table Storage
+    volumes:
+      - azurite-data:/data
+    # Removed healthcheck block to bypass shell binary limitations
+
+  # ── SQL Server 2022 (Developer Edition — free) ─────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: vaxtrace-sql
+    environment:
+      SA_PASSWORD:  "VaxTrace_Dev123!"
+      ACCEPT_EULA:  "Y"
+      MSSQL_PID:    "Developer"
+    ports:
+      - "1434:1433"     # Exposed via 1434 to play nice with SchemaForge on 1433
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    # Removed healthcheck block to avoid internal orchestration loops
+
+  # ── DB initialiser: applies schema then exits ──────────────────────────────
+  db-init:
+    image: mcr.microsoft.com/mssql-tools:latest
+    container_name: vaxtrace-db-init
+    depends_on:
+      sqlserver:
+        condition: service_started  # Changed from service_healthy
+    volumes:
+      - ./backend/sql:/sql
+    command: >
+      bash -c "
+        echo '=== Waiting for SQL Server to accept connections ===' &&
+        sleep 15 && 
+        echo '=== Applying VaxTrace schema ===' &&
+        /opt/mssql-tools/bin/sqlcmd
+          -S sqlserver -U sa -P 'VaxTrace_Dev123!'
+          -i /sql/01_schema.sql -b &&
+        /opt/mssql-tools/bin/sqlcmd
+          -S sqlserver -U sa -P 'VaxTrace_Dev123!'
+          -d VaxTraceDB
+          -i /sql/02_stored_procedures.sql -b &&
+        /opt/mssql-tools/bin/sqlcmd
+          -S sqlserver -U sa -P 'VaxTrace_Dev123!'
+          -d VaxTraceDB
+          -i /sql/03_seed_data.sql -b &&
+        echo '=== Schema applied successfully ==='
+      "
+    restart: "no"
+
+  # ── Queue initialiser: pre-creates the Azurite queue ──────────────────────
+  queue-init:
+    image: mcr.microsoft.com/azure-cli:latest
+    container_name: vaxtrace-queue-init
+    depends_on:
+      azurite:
+        condition: service_started  # Changed from service_healthy
+    environment:
+      AZURE_STORAGE_CONNECTION_STRING: >
+        DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;
+        AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiqIFbZQ==;
+        BlobEndpoint=http://azurite:10000/devstoreaccount1;
+        QueueEndpoint=http://azurite:10001/devstoreaccount1;
+        TableEndpoint=http://azurite:10002/devstoreaccount1;
+    command: >
+      bash -c "
+        echo '=== Waiting for Azurite core process ===' &&
+        sleep 5 &&
+        az storage queue create --name vaccination-queue &&
+        az storage queue create --name vaccination-deadletter &&
+        az storage container create --name vaccination-raw-archive &&
+        az storage container create --name vaccination-processed &&
+        echo '=== Queues and containers created ==='
+      "
+    restart: "no"
+
+volumes:
+  azurite-data:
+  sqlserver-data:
+
+networks:
+  default:
+    name: vaxtrace-local

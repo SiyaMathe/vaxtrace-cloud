@@ -1,0 +1,100 @@
+### VaxTrace Cloud — VS Code REST Client
+### Install extension: humao.rest-client
+### Click "Send Request" above each request
+
+@base = http://localhost:7071/api
+
+### ── Health Check ──────────────────────────────────────────────────────────
+GET {{base}}/health
+
+###
+
+### ── Submit Format A vaccination (JSON body) ─────────────────────────────
+POST {{base}}/vaccination
+Content-Type: application/json
+
+{
+  "format": "A",
+  "id": "8001015009087",
+  "vaccinationCenter": "Charlotte Maxeke Hospital",
+  "vaccinationDate": "2024-01-20",
+  "vaccineSerialNumber": "JNJ-2024-002-A"
+}
+
+###
+
+### ── Submit Format A vaccination (raw message string) ────────────────────
+POST {{base}}/vaccination
+Content-Type: text/plain
+
+9203224800088:Inkosi Albert Luthuli Hospital:2024-01-10:AZ-2024-003-A
+
+###
+
+### ── Submit Format B vaccination (raw message string) ────────────────────
+POST {{base}}/vaccination
+Content-Type: text/plain
+
+BAR-00001:2024-02-12:Groote Schuur Hospital:0105215359081
+
+###
+
+### ── Submit Format B vaccination (JSON body) ─────────────────────────────
+POST {{base}}/vaccination
+Content-Type: application/json
+
+{
+  "format": "B",
+  "vaccineBarcode": "BAR-99999",
+  "vaccinationDate": "2024-03-15",
+  "vaccinationCenter": "Tygerberg Hospital",
+  "id": "7512086150082"
+}
+
+###
+
+### ── Query by SA ID (pre-seeded, fully vaccinated) ───────────────────────
+GET {{base}}/vaccination/0105215359081
+
+###
+
+### ── Query by SA ID (pre-seeded, partially vaccinated) ───────────────────
+GET {{base}}/vaccination/8001015009087
+
+###
+
+### ── Query by passport number ─────────────────────────────────────────────
+GET {{base}}/vaccination/P12345678
+
+###
+
+### ── Query non-existent ID (should return 404) ───────────────────────────
+GET {{base}}/vaccination/0000000000000
+
+###
+
+### ── Invalid message (should return 400) ─────────────────────────────────
+POST {{base}}/vaccination
+Content-Type: text/plain
+
+this is not a valid vaccination message
+
+###
+
+### ── Bulk ingest (Format A and B mixed) ──────────────────────────────────
+POST {{base}}/vaccination/bulk
+Content-Type: application/json
+
+[
+  "8001015009087:Life Hilton Private Hospital:2024-04-01:PFZ-2024-100",
+  "BAR-88001:2024-04-05:Netcare Blaauwberg Hospital:9203224800088",
+  "P12345678:Groote Schuur Hospital:2024-04-10:AZ-2024-200",
+  "0407145189089:Steve Biko Academic Hospital:2024-04-15:MOD-2024-050"
+]
+
+###
+
+### ── Get processing stats ─────────────────────────────────────────────────
+GET {{base}}/vaccination/stats
+
+###

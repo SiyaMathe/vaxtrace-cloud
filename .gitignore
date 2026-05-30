@@ -1,0 +1,23 @@
+# Secrets
+.env
+backend/functions/local.settings.json
+
+# .NET
+bin/
+obj/
+*.user
+TestResults/
+
+# VS Code (keep recommendations and settings)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Azure Functions publish output
+functions-publish/
