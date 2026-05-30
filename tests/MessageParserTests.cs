@@ -12,7 +12,6 @@ public class MessageParserTests
     public void Parse_FormatA_StandardSaId_ReturnsValidMessage()
     {
         const string msg = "8001015009087:Charlotte Maxeke Hospital:2024-01-20:JNJ-2024-002-A";
-
         var result = MessageParser.Parse(msg);
 
         result.Should().NotBeNull();
@@ -27,9 +26,7 @@ public class MessageParserTests
     [Fact]
     public void Parse_FormatA_CenterWithColonInName_ParsesCorrectly()
     {
-        // Center name contains a colon — parser must handle this
         const string msg = "9203224800088:St. Mary's: Durban Clinic:2024-03-01:PFZ-001";
-
         var result = MessageParser.Parse(msg);
 
         result.Should().NotBeNull();
@@ -44,7 +41,6 @@ public class MessageParserTests
     public void Parse_FormatA_PassportNumber_ReturnsValidMessage()
     {
         const string msg = "P12345678:Groote Schuur Hospital:2024-02-15:AZ-2024-005";
-
         var result = MessageParser.Parse(msg);
 
         result.Should().NotBeNull();
@@ -59,7 +55,6 @@ public class MessageParserTests
     public void Parse_FormatB_StandardMessage_ReturnsValidMessage()
     {
         const string msg = "BAR-00123:2024-01-15:Groote Schuur Hospital:0105215359081";
-
         var result = MessageParser.Parse(msg);
 
         result.Should().NotBeNull();
@@ -75,7 +70,6 @@ public class MessageParserTests
     public void Parse_FormatB_BarcodeWithHyphens_ParsesCorrectly()
     {
         const string msg = "PFZ-2024-001-B:2024-02-12:Tygerberg Hospital:7512086150082";
-
         var result = MessageParser.Parse(msg);
 
         result.Should().NotBeNull();
@@ -112,7 +106,6 @@ public class MessageParserTests
     public void Parse_InvalidDate_ReturnsInvalidMessage()
     {
         const string msg = "8001015009087:Hospital Name:NOT-A-DATE:PFZ-001";
-
         var result = MessageParser.Parse(msg);
 
         result.Should().NotBeNull();
@@ -124,11 +117,9 @@ public class MessageParserTests
     public void Parse_FormatA_WhitespaceAroundParts_TrimsCorrectly()
     {
         const string msg = " 8001015009087 : Charlotte Maxeke Hospital : 2024-01-20 : JNJ-2024 ";
-
         var result = MessageParser.Parse(msg);
 
         result.Should().NotBeNull();
-        // Whitespace handling — ID should be trimmed
         result!.IDNumber!.Trim().Should().Be("8001015009087");
     }
 
@@ -137,12 +128,7 @@ public class MessageParserTests
     [Fact]
     public void BuildFormatA_ThenParse_RoundTripsCorrectly()
     {
-        var original = MessageParser.BuildFormatA(
-            "8001015009087",
-            "Charlotte Maxeke Hospital",
-            new DateOnly(2024, 1, 20),
-            "JNJ-2024-002-A");
-
+        var original = MessageParser.BuildFormatA("8001015009087", "Charlotte Maxeke Hospital", new DateOnly(2024, 1, 20), "JNJ-2024-002-A");
         var parsed = MessageParser.Parse(original);
 
         parsed.Should().NotBeNull();
@@ -157,12 +143,7 @@ public class MessageParserTests
     [Fact]
     public void BuildFormatB_ThenParse_RoundTripsCorrectly()
     {
-        var original = MessageParser.BuildFormatB(
-            "BAR-99999",
-            new DateOnly(2024, 6, 1),
-            "Inkosi Albert Luthuli Hospital",
-            "9203224800088");
-
+        var original = MessageParser.BuildFormatB("BAR-99999", new DateOnly(2024, 6, 1), "Inkosi Albert Luthuli Hospital", "9203224800088");
         var parsed = MessageParser.Parse(original);
 
         parsed.Should().NotBeNull();
@@ -177,7 +158,7 @@ public class MessageParserTests
 
     [Theory]
     [InlineData("0105215359081:Groote Schuur Hospital:2024-01-15:PFZ-2024-001-A", 'A', "0105215359081")]
-    [InlineData("BAR-00001:2024-02-12:Groote Schuur Hospital:0105215359081",      'B', "0105215359081")]
+    [InlineData("BAR-00001:2024-02-12:Groote Schuur Hospital:0105215359081",       'B', "0105215359081")]
     [InlineData("8001015009087:Charlotte Maxeke Hospital:2024-01-20:JNJ-2024-002-A", 'A', "8001015009087")]
     [InlineData("9203224800088:Inkosi Albert Luthuli Hospital:2024-01-10:AZ-2024-003-A", 'A', "9203224800088")]
     [InlineData("BAR-00003:2024-02-07:Inkosi Albert Luthuli Hospital:9203224800088", 'B', "9203224800088")]
