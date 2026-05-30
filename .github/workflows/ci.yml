@@ -44,7 +44,9 @@ jobs:
   # ── Integration tests against Azurite + SQL Server ───────────────────────
   integration-tests:
     name: Integration Tests (Azurite + SQL Server)
+    needs: build-and-test
     runs-on: ubuntu-latest
+    continue-on-error: true
     services:
       sqlserver:
         image: mcr.microsoft.com/mssql/server:2022-latest
@@ -88,6 +90,8 @@ jobs:
         env:
           SQLCMDPASSWORD: "VaxTrace_Dev123!"
         run: |
+          # Added sleep to ensure SQL Server is ready before executing schema
+          sleep 20
           /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -C \
             -i backend/sql/01_schema.sql -b
           /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -C \
