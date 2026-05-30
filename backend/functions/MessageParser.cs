@@ -3,6 +3,29 @@ using System.Linq;
 
 namespace VaxTrace.Functions;
 
+// ── Data Model ────────────────────────────────────────────────────────────
+
+public class ParsedVaccinationMessage
+{
+    public char        Format              { get; init; } = 'U';
+    public string?     IDNumber            { get; init; }
+    public string?     IDType              { get; init; } = "SA_ID";
+    public string?     VaccinationCenter   { get; init; }
+    public DateOnly?   VaccinationDate     { get; init; }
+    public string?     VaccineSerialNumber { get; init; }
+    public string?     VaccineBarcode      { get; init; }
+    public string      RawMessage          { get; init; } = string.Empty;
+    public string?     ParseError          { get; init; }
+
+    public bool IsValid =>
+        ParseError is null &&
+        !string.IsNullOrWhiteSpace(IDNumber) &&
+        VaccinationDate.HasValue &&
+        !string.IsNullOrWhiteSpace(VaccinationCenter);
+}
+
+// ── Parser Logic ──────────────────────────────────────────────────────────
+
 public static class MessageParser
 {
     public static ParsedVaccinationMessage? Parse(string rawMessage)
@@ -31,7 +54,7 @@ public static class MessageParser
         };
     }
 
-    // ── Implementation of Builder Methods called by Tests ─────────────────────
+    // ── Builder Methods (called by Tests) ─────────────────────────────────────
 
     public static string BuildFormatA(string id, string center, DateOnly date, string serial)
         => $"{id}:{center}:{date:yyyy-MM-dd}:{serial}";
